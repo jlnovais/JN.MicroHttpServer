@@ -8,7 +8,9 @@ namespace JN.MicroHttpServer.Entities
     {
         public string Uri { get; set; }
         public HttpMethod HttpMethod { get; set; }
-        public string RequiresAuthentication { get; set; }
+        
+        //public bool RequiresAuthentication { get; set; }
+        
         /// <summary>
         /// AccessDetails = user details
         /// string = body content

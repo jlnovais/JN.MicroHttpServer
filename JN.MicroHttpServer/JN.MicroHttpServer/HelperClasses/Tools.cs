@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using JN.MicroHttpServer.Entities;
 
 namespace JN.MicroHttpServer.HelperClasses
 {
-    public class Tools
+    public static class Tools
     {
         public static bool VerifyUrl(string rawUrl, string path)
         {
@@ -19,5 +21,13 @@ namespace JN.MicroHttpServer.HelperClasses
             return false;
 
         }
+
+
+        public static ConfigItem GetConfigItem(this IEnumerable<ConfigItem> config, string url)
+        {
+            var item = config?.First(x => x.Uri == url);
+            return item;
+        }
+
     }
 }

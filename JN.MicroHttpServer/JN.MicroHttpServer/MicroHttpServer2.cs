@@ -24,13 +24,19 @@ namespace JN.MicroHttpServer
         public Action<string> WriteOutputHandler { get; set; }
         public Func<AccessDetails, bool> ValidateUser { get; set; }
 
-        public IEnumerable<ConfigItem> Config { get; set; }
+        private readonly IEnumerable<ConfigItem> _config;
 
         public bool IsRunning { get; private set; } = false;
 
         private void WriteOutput(string text)
         {
             WriteOutputHandler?.Invoke(text);
+        }
+
+
+        public MicroHttpServer2(IEnumerable<ConfigItem> config)
+        {
+            _config = config;
         }
 
         public Result Start()
@@ -59,7 +65,7 @@ namespace JN.MicroHttpServer
             //t?.Wait();
         }
 
-        public bool IsInitialized => Config != null && Config.Any();
+        public bool IsInitialized => _config != null && _config.Any();
 
         private async Task StartListener(CancellationToken token)
         {
@@ -78,7 +84,7 @@ namespace JN.MicroHttpServer
                     throw new ArgumentException("Invalid configuration.");
                 }
 
-                foreach (var configItem in Config)
+                foreach (var configItem in _config)
                 {
                     listener.Prefixes.Add(configItem.Uri);
                     WriteOutput($"URL: {configItem.Uri} METHOD: {configItem.HttpMethod}");
@@ -124,6 +130,40 @@ namespace JN.MicroHttpServer
             // on a different (thread pool) thread
 
             WriteOutput($"New request {context.Request.HttpMethod} for URL: {context.Request.RawUrl} | thread id: {Thread.CurrentThread.ManagedThreadId}");
+
+
+            var item = _config.GetConfigItem(context.Request.RawUrl);
+
+            if (item == null)
+            {
+                await ReturnError(context, "Not found", HttpStatusCode.NotFound);
+                return;
+            }
+
+            if (item.HttpMethod.ToString() != context.Request.HttpMethod)
+            {
+                await ReturnError(context, "Not allowed", HttpStatusCode.MethodNotAllowed);
+                return;
+            }
+
+            try
+            {
+                var jsonString = item.DelegateToExecute()
+
+                byte[] data = Encoding.UTF8.GetBytes(jsonString);
+                context.Response.ContentType = "application/json";
+
+                await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
+                context.Response.OutputStream.Close();
+            }
+            catch (Exception e)
+            {
+                await ReturnError(context, e.Message, HttpStatusCode.InternalServerError);
+            }
+
+
+
+            //--------------------------------------------------
 
             if (context.Request.HttpMethod == "GET"  &&  Tools.VerifyUrl(context.Request.RawUrl, "status"))
             {
