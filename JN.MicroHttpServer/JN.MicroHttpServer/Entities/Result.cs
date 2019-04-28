@@ -5,6 +5,6 @@
         public bool Success;
         public int ErrorCode;
         public string ErrorDescription;
-        public string ErrorDescription2;
+        public string JsonContent;
     }
 }

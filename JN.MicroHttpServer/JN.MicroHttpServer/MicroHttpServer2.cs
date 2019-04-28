@@ -15,14 +15,13 @@ namespace JN.MicroHttpServer
     public class MicroHttpServer2
     {
 
+        private const string AllowedContentType = "application/json";
+
         private CancellationTokenSource _cts;
         private Task _t;
         private string _lastError = "";
 
-        public Func<string, string, Result> ExecuteShutdown { get; set; }
-        public Func<string> GetStatusHandler { get; set; }
         public Action<string> WriteOutputHandler { get; set; }
-        public Func<AccessDetails, bool> ValidateUser { get; set; }
 
         private readonly IEnumerable<ConfigItem> _config;
 
@@ -110,6 +109,8 @@ namespace JN.MicroHttpServer
                 {
                     context = await listener.GetContextAsync().ConfigureAwait(false);
 
+                    //context.User.Identity.AuthenticationType
+
                     HandleRequest(context); // Note that this is *not* awaited
                 }
                 catch
@@ -146,11 +147,25 @@ namespace JN.MicroHttpServer
                 return;
             }
 
+            if (context.Request.ContentType != AllowedContentType)
+            {
+                await ReturnError(context, "Unsupported Media Type", HttpStatusCode.UnsupportedMediaType);
+                return;
+            }
+
+
+            //var x = context.Request.Headers.GetValues(1);
+
             try
             {
-                var jsonString = item.DelegateToExecute()
 
-                byte[] data = Encoding.UTF8.GetBytes(jsonString);
+                var result = item.DelegateToExecute(null, await GetBody(context.Request) );
+                
+                if(!result.Success)
+                    throw new Exception(result.ErrorDescription);
+
+
+                byte[] data = Encoding.UTF8.GetBytes(result.JsonContent);
                 context.Response.ContentType = "application/json";
 
                 await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
@@ -160,69 +175,26 @@ namespace JN.MicroHttpServer
             {
                 await ReturnError(context, e.Message, HttpStatusCode.InternalServerError);
             }
-
-
-
-            //--------------------------------------------------
-
-            if (context.Request.HttpMethod == "GET"  &&  Tools.VerifyUrl(context.Request.RawUrl, "status"))
-            {
-                try
-                {
-                    var jsonString = GetStatusHandler();
-
-                    byte[] data = Encoding.UTF8.GetBytes(jsonString);
-                    context.Response.ContentType = "application/json";
-
-                    await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
-                    context.Response.OutputStream.Close();
-                }
-                catch (Exception e)
-                {
-                    await ReturnError(context, e.Message, HttpStatusCode.InternalServerError);
-                }
-                
-            }
-            else if (context.Request.HttpMethod == "POST" && Tools.VerifyUrl(context.Request.RawUrl, "shutdown"))
-            {
-                try
-                {
-                    var content = GetRequestContents(context.Request);
-
-                    AccessDetails accessDetails = JsonConvert.DeserializeObject<AccessDetails>(content);
-
-                    var resValidation = ValidateUser(accessDetails);
-                    if (!resValidation)
-                    {
-                        await ReturnError(context, "Invalid access details", HttpStatusCode.Unauthorized);
-                        return;
-                    }
-
-                    var res = ExecuteShutdown(accessDetails.Username, accessDetails.Password);
-
-                    if (!res.Success)
-                    {
-                        string jsonString = JsonConvert.SerializeObject(res);
-                        byte[] data = Encoding.UTF8.GetBytes(jsonString);
-                        context.Response.ContentType = "application/json";
-
-                        await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
-                    }
-
-                    context.Response.OutputStream.Close();
-                }
-                catch (Exception e)
-                {
-                    await ReturnError(context, e.Message, HttpStatusCode.InternalServerError);
-
-                    return;
-                }
-            }
-            else
-            {
-                await ReturnError(context, "Invalid request", HttpStatusCode.InternalServerError);
-            }
+   
         }
+
+
+        private async Task<string> GetBody(HttpListenerRequest request)
+        {
+            if (!request.HasEntityBody)
+                return null;
+
+            Stream body = request.InputStream;
+            Encoding encoding = request.ContentEncoding;
+            StreamReader reader = new StreamReader(body, encoding);
+
+            string s = await reader.ReadToEndAsync();
+            body.Close();
+            reader.Close();
+
+            return s;
+        }
+
 
         private async Task ReturnError(HttpListenerContext context, string description, HttpStatusCode httpCode)
         {
