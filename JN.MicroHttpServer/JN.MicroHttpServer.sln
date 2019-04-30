@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.28803.202
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JN.MicroHttpServer", "JN.MicroHttpServer\JN.MicroHttpServer.csproj", "{81E02546-F864-41BF-A40A-7C5030CB454F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JN.MicroHttpServer.Tests", "JN.MicroHttpServer.Tests\JN.MicroHttpServer.Tests.csproj", "{A3EDBB89-0008-48CB-9E49-9A38CC594ED9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JN.MicroHttpServer.Tests", "JN.MicroHttpServer.Tests\JN.MicroHttpServer.Tests.csproj", "{A3EDBB89-0008-48CB-9E49-9A38CC594ED9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JN.MicroHttpServer.WinServiceTest", "JN.MicroHttpServer.WinServiceTest\JN.MicroHttpServer.WinServiceTest.csproj", "{72830FB3-49EA-4D7F-A96A-AB0B996491DA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{A3EDBB89-0008-48CB-9E49-9A38CC594ED9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A3EDBB89-0008-48CB-9E49-9A38CC594ED9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A3EDBB89-0008-48CB-9E49-9A38CC594ED9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72830FB3-49EA-4D7F-A96A-AB0B996491DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72830FB3-49EA-4D7F-A96A-AB0B996491DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72830FB3-49EA-4D7F-A96A-AB0B996491DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72830FB3-49EA-4D7F-A96A-AB0B996491DA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

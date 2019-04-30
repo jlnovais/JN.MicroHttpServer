@@ -12,7 +12,16 @@ using Newtonsoft.Json;
 
 namespace JN.MicroHttpServer
 {
-    public class MicroHttpServer2
+    public interface IMicroHttpServer2
+    {
+        Action<string> WriteOutputHandler { get; set; }
+        bool IsRunning { get; }
+        bool IsInitialized { get; }
+        Result Start();
+        void Stop();
+    }
+
+    public class MicroHttpServer2 : IMicroHttpServer2
     {
 
         private const string AllowedContentType = "application/json";
@@ -113,9 +122,9 @@ namespace JN.MicroHttpServer
 
                     HandleRequest(context); // Note that this is *not* awaited
                 }
-                catch
+                catch(Exception exception)
                 {
-                    // Handle errors
+                    WriteOutput($"Error processing request: {exception.Message}");
                 }
             }
         }
@@ -130,10 +139,10 @@ namespace JN.MicroHttpServer
             // Even if not asynchronous, though, this is still run 
             // on a different (thread pool) thread
 
-            WriteOutput($"New request {context.Request.HttpMethod} for URL: {context.Request.RawUrl} | thread id: {Thread.CurrentThread.ManagedThreadId}");
+            WriteOutput($"New request {context.Request.HttpMethod} for URL: {context.Request.Url.AbsoluteUri} | thread id: {Thread.CurrentThread.ManagedThreadId}");
 
 
-            var item = _config.GetConfigItem(context.Request.RawUrl);
+            var item = _config.GetConfigItem(context.Request.Url.AbsoluteUri);
 
             if (item == null)
             {
@@ -159,7 +168,9 @@ namespace JN.MicroHttpServer
             try
             {
 
-                var result = item.DelegateToExecute(null, await GetBody(context.Request) );
+                var contents = await GetRequestContentsAsync(context.Request);
+
+                var result = item.DelegateToExecute(null, contents);
                 
                 if(!result.Success)
                     throw new Exception(result.ErrorDescription);
@@ -179,21 +190,21 @@ namespace JN.MicroHttpServer
         }
 
 
-        private async Task<string> GetBody(HttpListenerRequest request)
-        {
-            if (!request.HasEntityBody)
-                return null;
+        //private async Task<string> GetBody(HttpListenerRequest request)
+        //{
+        //    if (!request.HasEntityBody)
+        //        return null;
 
-            Stream body = request.InputStream;
-            Encoding encoding = request.ContentEncoding;
-            StreamReader reader = new StreamReader(body, encoding);
+        //    Stream body = request.InputStream;
+        //    Encoding encoding = request.ContentEncoding;
+        //    StreamReader reader = new StreamReader(body, encoding);
 
-            string s = await reader.ReadToEndAsync();
-            body.Close();
-            reader.Close();
+        //    string s = await reader.ReadToEndAsync();
+        //    body.Close();
+        //    reader.Close();
 
-            return s;
-        }
+        //    return s;
+        //}
 
 
         private async Task ReturnError(HttpListenerContext context, string description, HttpStatusCode httpCode)
@@ -213,14 +224,14 @@ namespace JN.MicroHttpServer
 
 
 
-        private string GetRequestContents(HttpListenerRequest Request)
+        private async Task<string> GetRequestContentsAsync(HttpListenerRequest Request)
         {
             string documentContents;
             using (Stream receiveStream = Request.InputStream)
             {
                 using (StreamReader readStream = new StreamReader(receiveStream, Encoding.UTF8))
                 {
-                    documentContents = readStream.ReadToEnd();
+                    documentContents = await readStream.ReadToEndAsync();
                 }
             }
             return documentContents;

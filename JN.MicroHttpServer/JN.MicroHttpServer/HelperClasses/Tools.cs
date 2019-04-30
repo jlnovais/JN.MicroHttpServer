@@ -25,7 +25,17 @@ namespace JN.MicroHttpServer.HelperClasses
 
         public static ConfigItem GetConfigItem(this IEnumerable<ConfigItem> config, string url)
         {
-            var item = config?.First(x => x.Uri == url);
+            ConfigItem item;
+            try
+            {
+                item = config?.First(x => x.Uri == url);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+            
             return item;
         }
 
