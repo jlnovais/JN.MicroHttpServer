@@ -59,7 +59,8 @@ namespace JN.MicroHttpServer.WinServiceTest
             var server = new MicroHttpServer2(config)
             {
                 WriteOutputHandler = Console.WriteLine,
-                WriteOutputErrorHandler = Console.WriteLine
+                WriteOutputErrorHandler = Console.WriteLine,
+                BasicAuthentication = true
 
             };
 
@@ -67,8 +68,20 @@ namespace JN.MicroHttpServer.WinServiceTest
         }
     
 
-    private static Result Delegate1(AccessDetails arg1, string arg2)
+    private static Result Delegate1(AccessDetails details, string content)
         {
+            if (details != null)
+            {
+                if (details.Password != "123" || details.Username != "test")
+                {
+                    return new Result()
+                    {
+                        Success = false,
+                        Authenticated = false
+                    };
+                }
+            }
+
             Console.WriteLine($"Received request");
 
             return new Result() {Success = true};

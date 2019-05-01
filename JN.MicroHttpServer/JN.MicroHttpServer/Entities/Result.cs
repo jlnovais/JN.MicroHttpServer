@@ -6,5 +6,6 @@
         public int ErrorCode;
         public string ErrorDescription;
         public string JsonContent;
+        public bool Authenticated = true;
     }
 }

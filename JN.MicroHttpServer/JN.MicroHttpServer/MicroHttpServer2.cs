@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,7 +81,7 @@ namespace JN.MicroHttpServer
 
             IsRunning = false;
             _cts.Cancel();
-            //t?.Wait();
+            _t?.Wait();
         }
 
         public bool IsInitialized => _config != null && _config.Any();
@@ -133,8 +134,6 @@ namespace JN.MicroHttpServer
                 {
                     context = await listener.GetContextAsync().ConfigureAwait(false);
 
-                    //context.User.Identity.AuthenticationType
-
                     HandleRequest(context); // Note that this is *not* awaited
                 }
                 catch(Exception exception)
@@ -149,17 +148,13 @@ namespace JN.MicroHttpServer
             if (context.User == null)
                 return null;
 
-
             var identity = (HttpListenerBasicIdentity) context.User.Identity;
-
 
             return new AccessDetails
             {
                 Username = identity.Name,
                 Password = identity.Password
             };
-
-
         }
 
 
@@ -186,66 +181,54 @@ namespace JN.MicroHttpServer
                 await ReturnError(context, "Not allowed", HttpStatusCode.MethodNotAllowed);
                 return;
             }
+            
 
-            if (context.Request.ContentType != AllowedContentType)
-            {
-                await ReturnError(context, "Unsupported Media Type", HttpStatusCode.UnsupportedMediaType);
-                return;
-            }
-
-
-            //var x = context.Request.Headers.GetValues(1);
+            //if (context.Request.ContentType != AllowedContentType)
+            //{
+            //    await ReturnError(context, "Unsupported Media Type", HttpStatusCode.UnsupportedMediaType);
+            //    return;
+            //}
 
             try
             {
-
                 var contents = await GetRequestContentsAsync(context.Request);
 
                 var accessDetails = GetAccessDetails(context);
 
                 var result = item.DelegateToExecute(accessDetails, contents);
-                
-                if(!result.Success)
+
+                if (!result.Authenticated)
+                    throw new AuthenticationException("User not authenticated");
+
+                if (!result.Success)
                     throw new Exception(result.ErrorDescription);
 
+                if (!string.IsNullOrWhiteSpace(result.JsonContent))
+                {
+                    byte[] data = Encoding.UTF8.GetBytes(result.JsonContent);
+                    context.Response.ContentType = "application/json";
 
-                byte[] data = Encoding.UTF8.GetBytes(result.JsonContent);
-                context.Response.ContentType = "application/json";
+                    await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
+                }
 
-                await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
                 context.Response.OutputStream.Close();
+            }
+            catch (AuthenticationException e)
+            {
+                await ReturnError(context, e.Message, HttpStatusCode.Unauthorized);
             }
             catch (Exception e)
             {
                 await ReturnError(context, e.Message, HttpStatusCode.InternalServerError);
             }
-   
         }
-
-
-        //private async Task<string> GetBody(HttpListenerRequest request)
-        //{
-        //    if (!request.HasEntityBody)
-        //        return null;
-
-        //    Stream body = request.InputStream;
-        //    Encoding encoding = request.ContentEncoding;
-        //    StreamReader reader = new StreamReader(body, encoding);
-
-        //    string s = await reader.ReadToEndAsync();
-        //    body.Close();
-        //    reader.Close();
-
-        //    return s;
-        //}
 
 
         private async Task ReturnError(HttpListenerContext context, string description, HttpStatusCode httpCode)
         {
             var jsonString = $"{{\"error\":\"{description}\"}}";
 
-
-            WriteOutput(jsonString);
+            WriteErrorOutput(jsonString);
 
             byte[] data = Encoding.UTF8.GetBytes(jsonString);
             context.Response.ContentType = "application/json";

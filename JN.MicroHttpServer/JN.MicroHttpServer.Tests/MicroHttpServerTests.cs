@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using JN.MicroHttpServer.Entities;
 using NUnit.Framework;
 
@@ -14,99 +17,163 @@ namespace JN.MicroHttpServer.Tests
     /// </summary>
     public class MicroHttpServerTests
     {
-        private string url1 = "http://localhost:12345/test1/";
+
+        private static readonly HttpClient client = new HttpClient();
+
+        private const string urlNotExist = "http://localhost:1234/testNotFound/";
+        private const string url1 = "http://localhost:1234/test1/";
+        private const string url2 = "http://localhost:1234/test2/";
 
 
-        private int DelegateCallCount;
+        private int DelegateSuccessCallCount;
 
-        private Result Delegate1(AccessDetails arg1, string arg2)
+        private Result DelegateSuccess(AccessDetails arg1, string arg2)
         {
-            DelegateCallCount++;
+            DelegateSuccessCallCount++;
             Console.WriteLine(arg2);
             return new Result() { Success = true };
+        }
+
+        private int DelegateErrorCallCount;
+
+        private Result DelegateError(AccessDetails arg1, string arg2)
+        {
+            DelegateErrorCallCount++;
+            Console.WriteLine(arg2);
+            return new Result() { Success = false };
         }
 
 
         [SetUp]
         public void Setup()
         {
-            DelegateCallCount = 0;
+            DelegateSuccessCallCount = 0;
         }
 
         [Test]
-        public void Test1()
+        public async Task MicroHttpServer_delegateIsCalled()
         {
-
             var server = GetServer();
             server.Start();
 
-            var result = GetData(url1);
+            var result = await GetData(url1, "test", null, "POST");
 
             server.Stop();
 
-            Assert.Pass();
+            Assert.AreEqual(1, DelegateSuccessCallCount);
         }
 
-        private MicroHttpServer2 GetServer()
+        [Test]
+        public async Task MicroHttpServer_delegateIsCalledWithError()
+        {
+            var server = GetServer();
+            server.Start();
+
+            var result = await GetData(url2, "test", null, "GET");
+
+            server.Stop();
+
+            Assert.AreEqual(1, DelegateErrorCallCount);
+        }
+
+        [TestCase(url1, "GET")]
+        [TestCase(url2, "POST")]
+        public async Task MicroHttpServer_CallWithWrongMethod_returnsNotAllowed(string url, string wrongMethod)
+        {
+            var server = GetServer();
+            server.Start();
+
+            var result = await GetData(url, "test", null, wrongMethod);
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.MethodNotAllowed, result.Item2);
+        }
+
+        [Test]
+        public async Task MicroHttpServer_CallNotExistingUrl_returnsNotFound()
+        {
+            var server = GetServer();
+            server.Start();
+
+            var result = await GetData(urlNotExist, "test", null, "POST");
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.NotFound, result.Item2);
+        }
+
+
+        //-----------------------
+        private IMicroHttpServer2 GetServer()
         {
             var config = new List<ConfigItem>()
             {
                 new ConfigItem()
                 {
-                    DelegateToExecute = Delegate1,
+                    DelegateToExecute = DelegateSuccess,
                     HttpMethod = HttpMethod.POST,
                     Uri = url1
-
+                },
+                new ConfigItem()
+                {
+                    DelegateToExecute = DelegateError,
+                    HttpMethod = HttpMethod.GET,
+                    Uri = url2
                 }
             };
 
-
             var server = new MicroHttpServer2(config)
             {
-                WriteOutputHandler = Console.WriteLine
+                WriteOutputHandler = Console.WriteLine,
+                WriteOutputErrorHandler = Console.WriteLine
             };
 
             return server;
         }
 
 
-        public string GetData(string url, string method = "POST")
+        public async Task<(string, HttpStatusCode)> GetData(string url, string content, AccessDetails accessDetails, string method = "POST")
         {
-            using (WebClient client = new WebClient())
+            string contentText = "";
+            HttpStatusCode statusCode;
+
+            using (HttpClient client = new HttpClient())
             {
 
-                //client.Headers["User-Agent"] =
-                //    "Mozilla/4.0 (Compatible; Windows NT 5.1; MSIE 6.0)";
-
-
-                //// Download data.
-                //byte[] arr = client. DownloadData("http://www.dotnetperls.com/");
-
-                //// Write values.
-                //Console.WriteLine("--- WebClient result ---");
-                //Console.WriteLine(arr.Length);
-
-
-                //var url = "https://your-url.tld/expecting-a-post.aspx";
-                //var client = new WebClient();
-                //var method = "POST"; // If your endpoint expects a GET then do it.
-                var parameters = new NameValueCollection
+                if (accessDetails != null)
                 {
-                    {"parameter1", "Hello world"},
-                    {"parameter2", "www.stopbyte.com"},
-                    {"parameter3", "parameter 3 value."}
-                };
+                    var authValue = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{accessDetails.Username}:{accessDetails.Password}")));
 
+                    client.DefaultRequestHeaders.Authorization = authValue;
+                }
 
-                /* Always returns a byte[] array data as a response. */
-                var response_data = client.UploadValues(url, method, parameters);
+                HttpResponseMessage response;
 
-                // Parse the returned data (if any) if needed.
-                var responseString = UnicodeEncoding.UTF8.GetString(response_data);
+                switch (method)
+                {
+                    case "GET":
+                        response = await client.GetAsync(url);
+                        break;
+                    case "POST":
+                        var stringContent = new StringContent(content);
+                        response = await client.PostAsync(url, stringContent);
+                        break;
+                    default:
+                        throw new Exception("Method not supported");
+                }
 
-                return responseString;
+                statusCode = response.StatusCode;
 
+                if(statusCode == HttpStatusCode.OK)
+                    contentText = await response.Content.ReadAsStringAsync();
+
+                response.Dispose();
             }
+
+            return (contentText, statusCode);
+
+
         }
     }
 }
