@@ -165,10 +165,17 @@ namespace JN.MicroHttpServer
             // Even if not asynchronous, though, this is still run 
             // on a different (thread pool) thread
 
-            WriteOutput($"New request {context.Request.HttpMethod} for URL: {context.Request.Url.AbsoluteUri} | thread id: {Thread.CurrentThread.ManagedThreadId}");
+            WriteOutput($"New {context.Request.HttpMethod} request for URL: {context.Request.Url.AbsoluteUri} | thread id: {Thread.CurrentThread.ManagedThreadId}");
 
 
-            var item = _config.GetConfigItem(context.Request.Url.AbsoluteUri);
+            var item = _config.GetConfigItem(context.Request.Url.AbsoluteUri, context.Request.HttpMethod);
+
+            if (_config.ExistsUrlConfiguredWithOtherMethod(context.Request.Url.AbsoluteUri, context.Request.HttpMethod))
+            {
+                await ReturnError(context, "Not allowed", HttpStatusCode.MethodNotAllowed);
+                return;
+            }
+
 
             if (item == null)
             {
@@ -176,11 +183,11 @@ namespace JN.MicroHttpServer
                 return;
             }
 
-            if (item.HttpMethod.ToString() != context.Request.HttpMethod)
-            {
-                await ReturnError(context, "Not allowed", HttpStatusCode.MethodNotAllowed);
-                return;
-            }
+            //if (item.HttpMethod.ToString() != context.Request.HttpMethod)
+            //{
+            //    await ReturnError(context, "Not allowed", HttpStatusCode.MethodNotAllowed);
+            //    return;
+            //}
             
 
             //if (context.Request.ContentType != AllowedContentType)

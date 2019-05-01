@@ -9,8 +9,157 @@ namespace JN.MicroHttpServer.Tests
 {
     public class ToolsTests
     {
+
+
+        [Test]
+        public void ExistsUrlConfiguredWithOtherMethod_ExistsItemButNotOther_returnsFalse()
+        {
+
+            var item = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.POST,
+                Uri = "http://test"
+            };
+
+
+            var config = new List<ConfigItem>
+            {
+                item
+            };
+
+            var res = config.ExistsUrlConfiguredWithOtherMethod("http://test", "POST");
+
+            Assert.IsFalse(res);
+        }
+
+        [Test]
+        public void ExistsUrlConfiguredWithOtherMethod_NotExistsItem_returnsFalse()
+        {
+
+            var item = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.POST,
+                Uri = "http://test123"
+            };
+
+
+            var config = new List<ConfigItem>
+            {
+                item
+            };
+
+            var res = config.ExistsUrlConfiguredWithOtherMethod("http://test", "POST");
+
+            Assert.IsFalse(res);
+        }
+
+        [Test]
+        public void ExistsUrlConfiguredWithOtherMethod_ExistsItemAndExistsOtherItem_returnsTrue()
+        {
+
+            var item = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.POST,
+                Uri = "http://test"
+            };
+
+            var item2 = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.GET,
+                Uri = "http://test"
+            };
+
+
+            var config = new List<ConfigItem>
+            {
+                item, item2
+            };
+
+            var res = config.ExistsUrlConfiguredWithOtherMethod("http://test", "POST");
+
+            Assert.IsTrue(res);
+        }
+
+        [Test]
+        public void ExistsUrlConfiguredWithOtherMethod_ExistsItemButNotExistsOtherItemConfigured_returnsFalse()
+        {
+
+            var item = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.POST,
+                Uri = "http://test"
+            };
+
+            var item2 = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.GET,
+                Uri = "http://testOther"
+            };
+
+
+            var config = new List<ConfigItem>
+            {
+                item, item2
+            };
+
+            var res = config.ExistsUrlConfiguredWithOtherMethod("http://test", "POST");
+
+            Assert.IsFalse(res);
+
+        }
+
+        [Test]
+        public void ExistsUrlConfiguredWithOtherMethod_InvalidConfig_returnsFalse()
+        {
+
+            List<ConfigItem> config = null;
+
+            var res = config.ExistsUrlConfiguredWithOtherMethod("http://test", "POST");
+
+            Assert.IsFalse(res);
+
+        }
+
+        //-------------------------
+
         [Test]
         public void GetConfigItem_validConfiguration_returnsItem()
+        {
+
+            var item = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.POST,
+                Uri = "http://test"
+            };
+
+            var item2 = new ConfigItem()
+            {
+                DelegateToExecute = null,
+                HttpMethod = HttpMethod.GET,
+                Uri = "http://test"
+            };
+
+
+            var config = new List<ConfigItem>
+            {
+                item, item2
+            };
+
+            var res = config.GetConfigItem("http://test", "POST");
+
+            Assert.IsNotNull(res);
+            Assert.AreEqual(item, res);
+        }
+
+        [Test]
+        public void GetConfigItem_validConfigurationGetWrongMethod_returnsNull()
         {
 
             var item = new ConfigItem()
@@ -21,12 +170,11 @@ namespace JN.MicroHttpServer.Tests
 
             };
 
-            var config = new List<ConfigItem> {item};
+            var config = new List<ConfigItem> { item };
 
-            var res = config.GetConfigItem("http://test");
+            var res = config.GetConfigItem("http://test", "GET");
 
-            Assert.IsNotNull(res);
-            Assert.AreEqual(item, res);
+            Assert.IsNull(res);
         }
 
         [Test]
@@ -43,7 +191,7 @@ namespace JN.MicroHttpServer.Tests
 
             var config = new List<ConfigItem> { item };
 
-            var res = config.GetConfigItem("http://testNotExists");
+            var res = config.GetConfigItem("http://testNotExists", "POST");
 
             Assert.IsNull(res);
         }
@@ -54,7 +202,7 @@ namespace JN.MicroHttpServer.Tests
 
             var config = new List<ConfigItem>();
 
-            var res = config.GetConfigItem("http://testNotExists");
+            var res = config.GetConfigItem("http://testNotExists", "POST");
 
             Assert.IsNull(res);
         }
@@ -65,7 +213,7 @@ namespace JN.MicroHttpServer.Tests
 
             List<ConfigItem> config = null;
 
-            var res = config.GetConfigItem("http://testNotExists");
+            var res = config.GetConfigItem("http://testNotExists", "POST");
 
             Assert.IsNull(res);
         }

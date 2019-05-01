@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JN.MicroHttpServer.Entities;
+using Microsoft.VisualStudio.TestPlatform.CrossPlatEngine;
 using NUnit.Framework;
 
 namespace JN.MicroHttpServer.Tests
@@ -18,28 +19,26 @@ namespace JN.MicroHttpServer.Tests
     public class MicroHttpServerTests
     {
 
-        private static readonly HttpClient client = new HttpClient();
-
         private const string urlNotExist = "http://localhost:1234/testNotFound/";
         private const string url1 = "http://localhost:1234/test1/";
         private const string url2 = "http://localhost:1234/test2/";
 
 
-        private int DelegateSuccessCallCount;
+        private int _delegateSuccessCallCount;
 
-        private Result DelegateSuccess(AccessDetails arg1, string arg2)
+        private Result DelegateSuccess(AccessDetails accessDetails, string content)
         {
-            DelegateSuccessCallCount++;
-            Console.WriteLine(arg2);
+            _delegateSuccessCallCount++;
+            Console.WriteLine(content);
             return new Result() { Success = true };
         }
 
-        private int DelegateErrorCallCount;
+        private int _delegateErrorCallCount;
 
-        private Result DelegateError(AccessDetails arg1, string arg2)
+        private Result DelegateError(AccessDetails accessDetails, string content)
         {
-            DelegateErrorCallCount++;
-            Console.WriteLine(arg2);
+            _delegateErrorCallCount++;
+            Console.WriteLine(content);
             return new Result() { Success = false };
         }
 
@@ -47,7 +46,7 @@ namespace JN.MicroHttpServer.Tests
         [SetUp]
         public void Setup()
         {
-            DelegateSuccessCallCount = 0;
+            _delegateSuccessCallCount = 0;
         }
 
         [Test]
@@ -56,11 +55,11 @@ namespace JN.MicroHttpServer.Tests
             var server = GetServer();
             server.Start();
 
-            var result = await GetData(url1, "test", null, "POST");
+            var result = await HelperClasses.HttpClient.GetData(url1, "test", null, "POST");
 
             server.Stop();
 
-            Assert.AreEqual(1, DelegateSuccessCallCount);
+            Assert.AreEqual(1, _delegateSuccessCallCount);
         }
 
         [Test]
@@ -69,11 +68,11 @@ namespace JN.MicroHttpServer.Tests
             var server = GetServer();
             server.Start();
 
-            var result = await GetData(url2, "test", null, "GET");
+            var result = await HelperClasses.HttpClient.GetData(url2, "test", null, "GET");
 
             server.Stop();
 
-            Assert.AreEqual(1, DelegateErrorCallCount);
+            Assert.AreEqual(1, _delegateErrorCallCount);
         }
 
         [TestCase(url1, "GET")]
@@ -83,7 +82,7 @@ namespace JN.MicroHttpServer.Tests
             var server = GetServer();
             server.Start();
 
-            var result = await GetData(url, "test", null, wrongMethod);
+            var result = await HelperClasses.HttpClient.GetData(url, "test", null, wrongMethod);
 
             server.Stop();
 
@@ -96,16 +95,64 @@ namespace JN.MicroHttpServer.Tests
             var server = GetServer();
             server.Start();
 
-            var result = await GetData(urlNotExist, "test", null, "POST");
+            var result = await HelperClasses.HttpClient.GetData(urlNotExist, "test", null, "POST");
 
             server.Stop();
 
             Assert.AreEqual(HttpStatusCode.NotFound, result.Item2);
         }
 
+        [Test]
+        public async Task MicroHttpServer_CallSuccess_returnsOk()
+        {
+            var server = GetServer();
+            server.Start();
 
-        //-----------------------
-        private IMicroHttpServer2 GetServer()
+            var result = await HelperClasses.HttpClient.GetData(urlNotExist, "test", null, "POST");
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.NotFound, result.Item2);
+        }
+
+        //---------------------------
+        [Test]
+        public async Task MicroHttpServer_WithAuthentication_NoAuthHeaderInRequest_returnsUnauthorized()
+        {
+            var server = GetServer(true);
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(url1, "test", null, "POST");
+
+            server.Stop();
+            Assert.AreEqual(HttpStatusCode.Unauthorized, result.Item2);
+
+        }
+
+        [Test]
+        public async Task MicroHttpServer_WithAuthentication_delegateIsCalled()
+        {
+            var server = GetServer();
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(url1, "test", GetAccessDetails(), "POST");
+
+            server.Stop();
+
+            Assert.AreEqual(1, _delegateSuccessCallCount);
+        }
+
+        private AccessDetails GetAccessDetails()
+        {
+            return new AccessDetails()
+            {
+                Username = "test",
+                Password = "123"
+            };
+        }
+
+        //--------------------------
+        private IMicroHttpServer2 GetServer(bool useBasicAuthentication = false)
         {
             var config = new List<ConfigItem>()
             {
@@ -126,54 +173,14 @@ namespace JN.MicroHttpServer.Tests
             var server = new MicroHttpServer2(config)
             {
                 WriteOutputHandler = Console.WriteLine,
-                WriteOutputErrorHandler = Console.WriteLine
+                WriteOutputErrorHandler = Console.WriteLine,
+                BasicAuthentication = useBasicAuthentication
             };
 
             return server;
         }
 
 
-        public async Task<(string, HttpStatusCode)> GetData(string url, string content, AccessDetails accessDetails, string method = "POST")
-        {
-            string contentText = "";
-            HttpStatusCode statusCode;
-
-            using (HttpClient client = new HttpClient())
-            {
-
-                if (accessDetails != null)
-                {
-                    var authValue = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{accessDetails.Username}:{accessDetails.Password}")));
-
-                    client.DefaultRequestHeaders.Authorization = authValue;
-                }
-
-                HttpResponseMessage response;
-
-                switch (method)
-                {
-                    case "GET":
-                        response = await client.GetAsync(url);
-                        break;
-                    case "POST":
-                        var stringContent = new StringContent(content);
-                        response = await client.PostAsync(url, stringContent);
-                        break;
-                    default:
-                        throw new Exception("Method not supported");
-                }
-
-                statusCode = response.StatusCode;
-
-                if(statusCode == HttpStatusCode.OK)
-                    contentText = await response.Content.ReadAsStringAsync();
-
-                response.Dispose();
-            }
-
-            return (contentText, statusCode);
-
-
-        }
+        
     }
 }
