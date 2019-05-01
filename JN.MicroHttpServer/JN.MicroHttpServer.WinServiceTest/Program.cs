@@ -56,7 +56,12 @@ namespace JN.MicroHttpServer.WinServiceTest
             };
 
 
-            var server = new MicroHttpServer2(config) {WriteOutputHandler = Console.WriteLine};
+            var server = new MicroHttpServer2(config)
+            {
+                WriteOutputHandler = Console.WriteLine,
+                WriteOutputErrorHandler = Console.WriteLine
+
+            };
 
             return server;
         }

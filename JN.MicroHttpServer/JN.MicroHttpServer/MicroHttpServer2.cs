@@ -17,6 +17,7 @@ namespace JN.MicroHttpServer
         Action<string> WriteOutputHandler { get; set; }
         bool IsRunning { get; }
         bool IsInitialized { get; }
+        Action<string> WriteOutputErrorHandler { get; set; }
         Result Start();
         void Stop();
     }
@@ -30,12 +31,21 @@ namespace JN.MicroHttpServer
         private Task _t;
         private string _lastError = "";
 
-        public Action<string> WriteOutputHandler { get; set; }
-
         private readonly IEnumerable<ConfigItem> _config;
+
+
+        public Action<string> WriteOutputHandler { get; set; }
+        public Action<string> WriteOutputErrorHandler { get; set; }
 
         public bool IsRunning { get; private set; } = false;
 
+        public bool BasicAuthentication { get; set; }
+
+
+        private void WriteErrorOutput(string text)
+        {
+            WriteOutputHandler?.Invoke(text);
+        }
         private void WriteOutput(string text)
         {
             WriteOutputHandler?.Invoke(text);
@@ -81,6 +91,11 @@ namespace JN.MicroHttpServer
 
             var listener = new HttpListener();
 
+            if (BasicAuthentication)
+            {
+                listener.AuthenticationSchemes = AuthenticationSchemes.Basic;
+            }
+
             IsRunning = false;
             _lastError = "";
 
@@ -103,7 +118,7 @@ namespace JN.MicroHttpServer
             }
             catch (Exception e)
             {
-                WriteOutput("Error starting listener: " + e.Message);
+                WriteErrorOutput("Error starting listener: " + e.Message);
                 _lastError = e.Message;
                 throw;
             }
@@ -124,12 +139,28 @@ namespace JN.MicroHttpServer
                 }
                 catch(Exception exception)
                 {
-                    WriteOutput($"Error processing request: {exception.Message}");
+                    WriteErrorOutput($"Error processing request: {exception.Message}");
                 }
             }
         }
 
+        private AccessDetails GetAccessDetails(HttpListenerContext context)
+        {
+            if (context.User == null)
+                return null;
 
+
+            var identity = (HttpListenerBasicIdentity) context.User.Identity;
+
+
+            return new AccessDetails
+            {
+                Username = identity.Name,
+                Password = identity.Password
+            };
+
+
+        }
 
 
 
@@ -170,7 +201,9 @@ namespace JN.MicroHttpServer
 
                 var contents = await GetRequestContentsAsync(context.Request);
 
-                var result = item.DelegateToExecute(null, contents);
+                var accessDetails = GetAccessDetails(context);
+
+                var result = item.DelegateToExecute(accessDetails, contents);
                 
                 if(!result.Success)
                     throw new Exception(result.ErrorDescription);

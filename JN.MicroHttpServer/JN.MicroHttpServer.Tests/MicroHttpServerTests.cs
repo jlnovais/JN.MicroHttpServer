@@ -40,9 +40,6 @@ namespace JN.MicroHttpServer.Tests
             var server = GetServer();
             server.Start();
 
-
-            Thread.Sleep(120000);
-
             var result = GetData(url1);
 
             server.Stop();
