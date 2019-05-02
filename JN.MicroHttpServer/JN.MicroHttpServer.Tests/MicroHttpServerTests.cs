@@ -7,7 +7,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JN.MicroHttpServer.Entities;
+using JN.MicroHttpServer.Dto;
 using Microsoft.VisualStudio.TestPlatform.CrossPlatEngine;
 using NUnit.Framework;
 
@@ -19,9 +19,15 @@ namespace JN.MicroHttpServer.Tests
     public class MicroHttpServerTests
     {
 
+        private const string defaultErrorMessage = "something is wrong";
+        private const int defaultErrorCode = -1;
+
         private const string urlNotExist = "http://localhost:1234/testNotFound/";
         private const string url1 = "http://localhost:1234/test1/";
         private const string url2 = "http://localhost:1234/test2/";
+        private const string urlSuccessAuthenticated = "http://localhost:1234/test3/";
+        private const string urlNotAuthenticated = "http://localhost:1234/test4/";
+        private const string urlErrorAuthenticated = "http://localhost:1234/test5/";
 
 
         private int _delegateSuccessCallCount;
@@ -39,13 +45,53 @@ namespace JN.MicroHttpServer.Tests
         {
             _delegateErrorCallCount++;
             Console.WriteLine(content);
-            return new Result() { Success = false };
+            return new Result()
+            {
+                ErrorDescription = defaultErrorMessage,
+                ErrorCode = defaultErrorCode,
+                Success = false
+            };
         }
+
+        private int _delegateSuccessAuthenticatedCallCount;
+        private Result DelegateSuccessAuthenticated(AccessDetails accessDetails, string content)
+        {
+            _delegateSuccessAuthenticatedCallCount++;
+            Console.WriteLine(content);
+            return new Result() { Success = true, Authenticated = true};
+        }
+
+        private int _delegateErrorAuthenticatedCallCount;
+        private Result DelegateErrorAuthenticated(AccessDetails accessDetails, string content)
+        {
+            _delegateErrorAuthenticatedCallCount++;
+            Console.WriteLine(content);
+            return new Result()
+            {
+                ErrorDescription = defaultErrorMessage,
+                ErrorCode = defaultErrorCode,
+                Success = false,
+                Authenticated = true
+            };
+        }
+
+        private int _delegateNotAuthenticatedCallCount;
+        private Result DelegateNotAuthenticated(AccessDetails accessDetails, string content)
+        {
+            _delegateNotAuthenticatedCallCount++;
+            Console.WriteLine(content);
+            return new Result() { Success = true, Authenticated = false };
+        }
+
 
 
         [SetUp]
         public void Setup()
         {
+            _delegateNotAuthenticatedCallCount = 0;
+            _delegateErrorAuthenticatedCallCount = 0;
+            _delegateSuccessAuthenticatedCallCount = 0;
+            _delegateErrorCallCount = 0;
             _delegateSuccessCallCount = 0;
         }
 
@@ -74,6 +120,27 @@ namespace JN.MicroHttpServer.Tests
 
             Assert.AreEqual(1, _delegateErrorCallCount);
         }
+
+        [Test]
+        public async Task MicroHttpServer_CalledWithError_returnsInternalServerError()
+        {
+            var server = GetServer();
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(url2, "test", null, "GET");
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, result.Item2);
+
+            string expected = $"\"error\":\"{defaultErrorMessage}\"";
+            string expected1 = $"\"errorCode\":\"{defaultErrorCode}\"";
+
+            StringAssert.Contains(expected, result.Item1);
+            StringAssert.Contains(expected1, result.Item1);
+
+        }
+
 
         [TestCase(url1, "GET")]
         [TestCase(url2, "POST")]
@@ -132,7 +199,7 @@ namespace JN.MicroHttpServer.Tests
         [Test]
         public async Task MicroHttpServer_WithAuthentication_delegateIsCalled()
         {
-            var server = GetServer();
+            var server = GetServer(true);
             server.Start();
 
             var result = await HelperClasses.HttpClient.GetData(url1, "test", GetAccessDetails(), "POST");
@@ -141,6 +208,53 @@ namespace JN.MicroHttpServer.Tests
 
             Assert.AreEqual(1, _delegateSuccessCallCount);
         }
+
+
+        [Test]
+        public async Task MicroHttpServer_WithAuthentication_SuccessAuthenticated_returnsOK()
+        {
+            var server = GetServer(true);
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(urlSuccessAuthenticated, "test", GetAccessDetails(), "GET");
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.OK, result.Item2);
+        }
+
+        [Test]
+        public async Task MicroHttpServer_WithAuthentication_NotAuthenticated_returnsUnauthorized()
+        {
+            var server = GetServer(true);
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(urlNotAuthenticated, "test", GetAccessDetails(), "GET");
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.Unauthorized, result.Item2);
+        }
+
+        [Test]
+        public async Task MicroHttpServer_WithAuthentication_ErrorAuthenticated_returnsInternalServerError()
+        {
+            var server = GetServer(true);
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(urlErrorAuthenticated, "test", GetAccessDetails(), "GET");
+
+            server.Stop();
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, result.Item2);
+
+            string expected = $"\"error\":\"{defaultErrorMessage}\"";
+            string expected1 = $"\"errorCode\":\"{defaultErrorCode}\"";
+
+            StringAssert.Contains(expected, result.Item1);
+            StringAssert.Contains(expected1, result.Item1);
+        }
+        //--------------------------
 
         private AccessDetails GetAccessDetails()
         {
@@ -151,8 +265,7 @@ namespace JN.MicroHttpServer.Tests
             };
         }
 
-        //--------------------------
-        private IMicroHttpServer2 GetServer(bool useBasicAuthentication = false)
+        private IMicroHttpServer GetServer(bool useBasicAuthentication = false)
         {
             var config = new List<ConfigItem>()
             {
@@ -167,10 +280,30 @@ namespace JN.MicroHttpServer.Tests
                     DelegateToExecute = DelegateError,
                     HttpMethod = HttpMethod.GET,
                     Uri = url2
+                },
+                new ConfigItem()
+                {
+                    DelegateToExecute = DelegateSuccessAuthenticated,
+                    HttpMethod = HttpMethod.GET,
+                    Uri = urlSuccessAuthenticated
+                },
+                new ConfigItem()
+                {
+                    DelegateToExecute = DelegateNotAuthenticated,
+                    HttpMethod = HttpMethod.GET,
+                    Uri = urlNotAuthenticated
+                },
+                new ConfigItem()
+                {
+                    DelegateToExecute = DelegateErrorAuthenticated,
+                    HttpMethod = HttpMethod.GET,
+                    Uri = urlErrorAuthenticated
                 }
+
+
             };
 
-            var server = new MicroHttpServer2(config)
+            var server = new MicroHttpServer(config)
             {
                 WriteOutputHandler = Console.WriteLine,
                 WriteOutputErrorHandler = Console.WriteLine,

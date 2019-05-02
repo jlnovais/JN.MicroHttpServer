@@ -1,4 +1,4 @@
-﻿namespace JN.MicroHttpServer.Entities
+﻿namespace JN.MicroHttpServer.Dto
 {
     public class AccessDetails
     {

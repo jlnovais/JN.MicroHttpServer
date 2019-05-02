@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using JN.MicroHttpServer.Entities;
+using JN.MicroHttpServer.Dto;
 using JN.MicroHttpServer.HelperClasses;
 using NUnit.Framework;
 
@@ -10,7 +10,40 @@ namespace JN.MicroHttpServer.Tests
     public class ToolsTests
     {
 
+        [Test]
+        public void GetAcceptedType_withItems_returnsFirst()
+        {
+            string[] types = {"aa", "bb"};
 
+            var res = types.GetAcceptedType();
+
+            Assert.AreEqual("aa", res);
+        }
+
+        [Test]
+        public void GetAcceptedType_Empty_returnsEmptyString()
+        {
+            string[] types = { };
+
+            var res = types.GetAcceptedType();
+
+            Assert.AreEqual(string.Empty, res);
+
+        }
+
+        [Test]
+        public void GetAcceptedType_Null_returnsEmptyString()
+        {
+            string[] types = null;
+
+            var res = types.GetAcceptedType();
+
+            Assert.AreEqual(string.Empty, res);
+
+        }
+
+
+        //--------------------------------------
         [Test]
         public void ExistsUrlConfiguredWithOtherMethod_ExistsItemButNotOther_returnsFalse()
         {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
-using JN.MicroHttpServer.Entities;
+using JN.MicroHttpServer.Dto;
 
 namespace JN.MicroHttpServer.WinServiceTest
 {
@@ -16,7 +16,7 @@ namespace JN.MicroHttpServer.WinServiceTest
         static void Main()
         {
             ILogWriter logger = new Logger();
-            IMicroHttpServer2 server = GetServer();
+            IMicroHttpServer server = GetServer();
 
             var serviceToRun = new Service1(logger, server);
 
@@ -41,22 +41,30 @@ namespace JN.MicroHttpServer.WinServiceTest
             }
         }
 
-        private static IMicroHttpServer2 GetServer()
+        private static IMicroHttpServer GetServer()
         {
 
             var config = new List<ConfigItem>()
             {
                 new ConfigItem()
                 {
-                    DelegateToExecute = Delegate1,
+                    DelegateToExecute = GetStatus,
                     HttpMethod = HttpMethod.GET,
-                    Uri = "http://localhost:9999/test/"
+                    Uri = "http://localhost:9999/status/"
+
+                },
+
+                new ConfigItem()
+                {
+                    DelegateToExecute = Shutdown,
+                    HttpMethod = HttpMethod.GET,
+                    Uri = "http://localhost:9999/exit/"
 
                 }
             };
 
 
-            var server = new MicroHttpServer2(config)
+            var server = new MicroHttpServer(config)
             {
                 WriteOutputHandler = Console.WriteLine,
                 WriteOutputErrorHandler = Console.WriteLine,
@@ -66,13 +74,34 @@ namespace JN.MicroHttpServer.WinServiceTest
 
             return server;
         }
-    
 
-    private static Result Delegate1(AccessDetails details, string content)
+        private static Result Shutdown(AccessDetails details, string content)
         {
             if (details != null)
             {
-                if (details.Password != "123" || details.Username != "test")
+                if (!ValidAccessDetails(details))
+                {
+                    return new Result()
+                    {
+                        Authenticated = false
+                    };
+                }
+            }
+
+            Environment.Exit(0);
+
+            return new Result()
+            {
+                Success = true
+            };
+        }
+
+
+        private static Result GetStatus(AccessDetails details, string content)
+        {
+            if (details != null)
+            {
+                if (!ValidAccessDetails(details))
                 {
                     return new Result()
                     {
@@ -84,7 +113,16 @@ namespace JN.MicroHttpServer.WinServiceTest
 
             Console.WriteLine($"Received request");
 
-            return new Result() {Success = true};
+            return new Result()
+            {
+                Content = "info from service: I'm running....",
+                Success = true
+            };
+        }
+
+        private static bool ValidAccessDetails(AccessDetails details)
+        {
+            return details.Password == "123" && details.Username == "test";
         }
     }
 }

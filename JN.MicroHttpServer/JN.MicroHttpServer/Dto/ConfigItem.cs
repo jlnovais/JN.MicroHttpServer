@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace JN.MicroHttpServer.Entities
+namespace JN.MicroHttpServer.Dto
 {
     public class ConfigItem
     {
         public string Uri { get; set; }
         public HttpMethod HttpMethod { get; set; }
-        
-        //public bool RequiresAuthentication { get; set; }
-        
+       
         /// <summary>
         /// AccessDetails = user details
         /// string = body content

@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
-using JN.MicroHttpServer.Entities;
+using JN.MicroHttpServer.Dto;
 
 namespace JN.MicroHttpServer.Tests.HelperClasses
 {
@@ -43,8 +43,14 @@ namespace JN.MicroHttpServer.Tests.HelperClasses
 
                 statusCode = response.StatusCode;
 
-                if (statusCode == HttpStatusCode.OK)
+                try
+                {
                     contentText = await response.Content.ReadAsStringAsync();
+                }
+                catch 
+                {
+                }
+                    
 
                 response.Dispose();
             }

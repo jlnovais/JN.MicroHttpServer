@@ -3,26 +3,22 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using JN.MicroHttpServer.Entities;
+using JN.MicroHttpServer.Dto;
 
 namespace JN.MicroHttpServer.HelperClasses
 {
     public static class Tools
     {
-        public static bool VerifyUrl(string rawUrl, string path)
+
+        public static string GetAcceptedType(this string[] types)
         {
-            if (string.IsNullOrWhiteSpace(rawUrl))
-                return false;
+            if (types == null)
+                return "";
 
-            if (rawUrl.EndsWith("/" + path + "/") ||
-                rawUrl.EndsWith("/" + path)
-            )
-                return true;
+            var res = types.FirstOrDefault();
 
-            return false;
-
+            return res ?? "";
         }
-
 
         public static ConfigItem GetConfigItem(this IEnumerable<ConfigItem> config, string url, string method)
         {

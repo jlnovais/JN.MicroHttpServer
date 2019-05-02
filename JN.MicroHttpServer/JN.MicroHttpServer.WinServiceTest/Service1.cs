@@ -15,9 +15,9 @@ namespace JN.MicroHttpServer.WinServiceTest
     {
         private readonly Timer _timer = new Timer {Interval = 60000};
         private readonly ILogWriter _logger;
-        private IMicroHttpServer2 _httpServer;
+        private IMicroHttpServer _httpServer;
 
-        public Service1(ILogWriter logger, IMicroHttpServer2 httpServer)
+        public Service1(ILogWriter logger, IMicroHttpServer httpServer)
         {
             _httpServer = httpServer;
             _logger = logger;
