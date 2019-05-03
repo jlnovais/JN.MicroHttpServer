@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Specialized;
 
 namespace JN.MicroHttpServer.Dto
 {
@@ -12,6 +13,6 @@ namespace JN.MicroHttpServer.Dto
         /// string = body content
         /// Result = output
         /// </summary>
-        public Func<AccessDetails, string, Result> DelegateToExecute { get; set; }
+        public Func<AccessDetails, string, NameValueCollection, Result> DelegateToExecute { get; set; }
     }
 }

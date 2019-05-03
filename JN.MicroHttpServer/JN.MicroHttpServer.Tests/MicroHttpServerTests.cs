@@ -31,9 +31,11 @@ namespace JN.MicroHttpServer.Tests
 
 
         private int _delegateSuccessCallCount;
+        private NameValueCollection _queryString;
 
-        private Result DelegateSuccess(AccessDetails accessDetails, string content)
+        private Result DelegateSuccess(AccessDetails accessDetails, string content, NameValueCollection queryString)
         {
+            _queryString = queryString;
             _delegateSuccessCallCount++;
             Console.WriteLine(content);
             return new Result() { Success = true };
@@ -41,7 +43,7 @@ namespace JN.MicroHttpServer.Tests
 
         private int _delegateErrorCallCount;
 
-        private Result DelegateError(AccessDetails accessDetails, string content)
+        private Result DelegateError(AccessDetails accessDetails, string content, NameValueCollection queryString)
         {
             _delegateErrorCallCount++;
             Console.WriteLine(content);
@@ -54,7 +56,7 @@ namespace JN.MicroHttpServer.Tests
         }
 
         private int _delegateSuccessAuthenticatedCallCount;
-        private Result DelegateSuccessAuthenticated(AccessDetails accessDetails, string content)
+        private Result DelegateSuccessAuthenticated(AccessDetails accessDetails, string content, NameValueCollection queryString)
         {
             _delegateSuccessAuthenticatedCallCount++;
             Console.WriteLine(content);
@@ -62,7 +64,7 @@ namespace JN.MicroHttpServer.Tests
         }
 
         private int _delegateErrorAuthenticatedCallCount;
-        private Result DelegateErrorAuthenticated(AccessDetails accessDetails, string content)
+        private Result DelegateErrorAuthenticated(AccessDetails accessDetails, string content, NameValueCollection queryString)
         {
             _delegateErrorAuthenticatedCallCount++;
             Console.WriteLine(content);
@@ -76,7 +78,7 @@ namespace JN.MicroHttpServer.Tests
         }
 
         private int _delegateNotAuthenticatedCallCount;
-        private Result DelegateNotAuthenticated(AccessDetails accessDetails, string content)
+        private Result DelegateNotAuthenticated(AccessDetails accessDetails, string content, NameValueCollection queryString)
         {
             _delegateNotAuthenticatedCallCount++;
             Console.WriteLine(content);
@@ -88,11 +90,41 @@ namespace JN.MicroHttpServer.Tests
         [SetUp]
         public void Setup()
         {
+            _queryString = null;
             _delegateNotAuthenticatedCallCount = 0;
             _delegateErrorAuthenticatedCallCount = 0;
             _delegateSuccessAuthenticatedCallCount = 0;
             _delegateErrorCallCount = 0;
             _delegateSuccessCallCount = 0;
+        }
+
+
+        [Test]
+        public void MicroHttpServer_CanStartAndStopServer()
+        {
+            var server = GetServer();
+            var res = server.Start();
+
+            Assert.IsTrue(res.Success);
+            Assert.IsTrue(server.IsInitialized);
+            Assert.IsTrue(server.IsRunning);
+
+            server.Stop();
+
+            Assert.IsFalse(server.IsRunning);
+
+        }
+
+
+        [Test]
+        public void MicroHttpServer_NoConfigation_returnsError()
+        {
+            var server = new MicroHttpServer(null);
+            var res = server.Start();
+
+            Assert.IsFalse(res.Success);
+
+            server.Stop();
         }
 
         [Test]
@@ -104,9 +136,22 @@ namespace JN.MicroHttpServer.Tests
             var result = await HelperClasses.HttpClient.GetData(url1, "test", null, "POST");
 
             server.Stop();
-
             Assert.AreEqual(1, _delegateSuccessCallCount);
         }
+
+        [Test]
+        public async Task MicroHttpServer_queryStringIsPassed()
+        {
+            var server = GetServer();
+            server.Start();
+
+            var result = await HelperClasses.HttpClient.GetData(url1+"?x=1&y=2", "test", null, "POST");
+
+            server.Stop();
+
+            Assert.AreEqual(2,_queryString.Count);
+        }
+
 
         [Test]
         public async Task MicroHttpServer_delegateIsCalledWithError()
@@ -120,6 +165,8 @@ namespace JN.MicroHttpServer.Tests
 
             Assert.AreEqual(1, _delegateErrorCallCount);
         }
+
+
 
         [Test]
         public async Task MicroHttpServer_CalledWithError_returnsInternalServerError()

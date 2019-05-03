@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.ServiceProcess;
 using System.Text;
@@ -13,21 +14,26 @@ namespace JN.MicroHttpServer.WinServiceTest
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
+        /// 
+        private static TestService _serviceToRun;
+
+        private static readonly ILogWriter LogWriter = new LogWriter();
+
         static void Main()
         {
-            ILogWriter logger = new Logger();
+            
             IMicroHttpServer server = GetServer();
 
-            var serviceToRun = new Service1(logger, server);
+            _serviceToRun = new TestService(LogWriter, server);
 
 
             if (Environment.UserInteractive)
             {
                 Console.WriteLine($"Running as a Console Application");
-                serviceToRun.StartService();
+                _serviceToRun.StartService();
                 Console.WriteLine("Press any key to stop program...");
                 Console.ReadLine();
-                serviceToRun.StopService();
+                _serviceToRun.StopService();
                 Console.WriteLine("Service Stopped.");
             }
             else
@@ -35,7 +41,7 @@ namespace JN.MicroHttpServer.WinServiceTest
                 ServiceBase[] ServicesToRun;
                 ServicesToRun = new ServiceBase[]
                 {
-                    serviceToRun,
+                    _serviceToRun,
                 };
                 ServiceBase.Run(ServicesToRun);
             }
@@ -66,8 +72,8 @@ namespace JN.MicroHttpServer.WinServiceTest
 
             var server = new MicroHttpServer(config)
             {
-                WriteOutputHandler = Console.WriteLine,
-                WriteOutputErrorHandler = Console.WriteLine,
+                WriteOutputHandler = LogWriter.LogMessage,
+                WriteOutputErrorHandler = LogWriter.LogErrorMessage,
                 BasicAuthentication = true
 
             };
@@ -75,7 +81,22 @@ namespace JN.MicroHttpServer.WinServiceTest
             return server;
         }
 
-        private static Result Shutdown(AccessDetails details, string content)
+
+        public static void StopAux(string serviceName)
+        {
+            ServiceController[] services = ServiceController.GetServices();
+            var controller = services.FirstOrDefault(x => x.ServiceName == serviceName);
+
+            if (controller == null)
+            {
+                return;
+            }
+
+            controller.Stop();
+            controller.WaitForStatus(ServiceControllerStatus.Stopped);
+        }
+
+        private static Result Shutdown(AccessDetails details, string content, NameValueCollection  queryString)
         {
             if (details != null)
             {
@@ -88,7 +109,15 @@ namespace JN.MicroHttpServer.WinServiceTest
                 }
             }
 
-            Environment.Exit(0);
+            LogWriter.LogMessage("Received request - Shutdown");
+
+            if (Environment.UserInteractive)
+                Environment.Exit(0);
+            else
+                StopAux(_serviceToRun.ServiceName);
+
+            //_serviceToRun.StopService();
+
 
             return new Result()
             {
@@ -97,7 +126,7 @@ namespace JN.MicroHttpServer.WinServiceTest
         }
 
 
-        private static Result GetStatus(AccessDetails details, string content)
+        private static Result GetStatus(AccessDetails details, string content, NameValueCollection queryString)
         {
             if (details != null)
             {
@@ -111,11 +140,11 @@ namespace JN.MicroHttpServer.WinServiceTest
                 }
             }
 
-            Console.WriteLine($"Received request");
+            LogWriter.LogMessage("Received request - GetStatus");
 
             return new Result()
             {
-                Content = "info from service: I'm running....",
+                Content = "info from service: I'm running.... Received items from query string:" + queryString.Count,
                 Success = true
             };
         }

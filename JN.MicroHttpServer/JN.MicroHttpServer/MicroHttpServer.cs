@@ -7,6 +7,7 @@ using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using JN.MicroHttpServer.Dto;
 using JN.MicroHttpServer.HelperClasses;
 
@@ -14,8 +15,6 @@ namespace JN.MicroHttpServer
 {
     public class MicroHttpServer : IMicroHttpServer
     {
-
-        private const string AllowedContentType = "application/json";
 
         private CancellationTokenSource _cts;
         private Task _t;
@@ -126,7 +125,7 @@ namespace JN.MicroHttpServer
                 {
                     context = await listener.GetContextAsync().ConfigureAwait(false);
 
-                    HandleRequest(context); // Note that this is *not* awaited
+                    HandleRequest(context); // don't await
                 }
                 catch (HttpListenerException) {  /*ignore*/ }
                 catch (ObjectDisposedException) {  /*ignore*/ }
@@ -157,14 +156,21 @@ namespace JN.MicroHttpServer
         {
             WriteOutput($"New {context.Request.HttpMethod} request for URL: {context.Request.Url.AbsoluteUri} | thread id: {Thread.CurrentThread.ManagedThreadId}");
 
-            var item = _config.GetConfigItem(context.Request.Url.AbsoluteUri, context.Request.HttpMethod);
 
-            if (_config.ExistsUrlConfiguredWithOtherMethod(context.Request.Url.AbsoluteUri, context.Request.HttpMethod))
+            string urlPath = context.Request.Url.GetLeftPart(UriPartial.Path);
+            string urlQuery = context.Request.Url.GetComponents(UriComponents.Query, UriFormat.UriEscaped);
+
+            var queryString = HttpUtility.ParseQueryString(urlQuery);
+
+            var item = _config.GetConfigItem(urlPath, context.Request.HttpMethod);
+
+            if (_config.ExistsUrlConfiguredWithOtherMethod(urlPath, context.Request.HttpMethod))
             {
                 await ReturnError(context, "Not allowed", (int)HttpStatusCode.MethodNotAllowed,  HttpStatusCode.MethodNotAllowed);
                 return;
             }
 
+            
 
             if (item == null)
             {
@@ -175,11 +181,6 @@ namespace JN.MicroHttpServer
 
             var clientAcceptType = context.Request.AcceptTypes.GetAcceptedType();
 
-            //if (context.Request.ContentType != AllowedContentType)
-            //{
-            //    await ReturnError(context, "Unsupported Media Type", HttpStatusCode.UnsupportedMediaType);
-            //    return;
-            //}
 
             try
             {
@@ -187,7 +188,7 @@ namespace JN.MicroHttpServer
 
                 var accessDetails = GetAccessDetails(context);
 
-                var result = item.DelegateToExecute(accessDetails, contents);
+                var result = item.DelegateToExecute(accessDetails, contents, queryString);
 
                 if (!result.Authenticated)
                     throw new AuthenticationException("User not authenticated");

@@ -1,34 +1,43 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 using System.Timers;
 
 namespace JN.MicroHttpServer.WinServiceTest
 {
-    public partial class Service1 : ServiceBase
+    public partial class TestService : ServiceBase
     {
         private readonly Timer _timer = new Timer {Interval = 60000};
         private readonly ILogWriter _logger;
         private IMicroHttpServer _httpServer;
 
-        public Service1(ILogWriter logger, IMicroHttpServer httpServer)
+        public TestService(ILogWriter logger, IMicroHttpServer httpServer)
         {
             _httpServer = httpServer;
             _logger = logger;
             InitializeComponent();
         }
 
+
         protected override void OnStart(string[] args)
         {
-            _timer.Elapsed += new ElapsedEventHandler(this.OnTimer);
+            var res = _httpServer.Start();
+
+            if (!res.Success)
+            {
+                _logger.LogErrorMessage($"Error starting web server: {res.ErrorDescription}");
+            }
+            else
+            {
+                _logger.LogMessage("Web server started");
+            }
+
+            _logger.LogMessage("Service is starting... " + DateTime.Now);
+            _timer.Elapsed += OnTimer;
             _timer.Start();
-            _logger.LogMessage("Service is starting. " + DateTime.Now);
+            _logger.LogMessage("Service is started " + DateTime.Now);
+
         }
 
         private void OnTimer(object sender, ElapsedEventArgs e)
@@ -39,19 +48,21 @@ namespace JN.MicroHttpServer.WinServiceTest
         protected override void OnStop()
         {
             _logger.LogMessage("Service is stopping. " + DateTime.Now);
+            _httpServer.Stop();
+          
             _timer.Stop();
+            _timer.Dispose();
         }
 
         public void StartService()
         {
-            _httpServer.Start();
             OnStart(null);
         }
 
         public void StopService()
         {
-            _httpServer.Stop();
             OnStop();
+            
         }
     }
 }
