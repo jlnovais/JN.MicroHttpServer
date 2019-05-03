@@ -21,8 +21,7 @@ namespace JN.MicroHttpServer.WinServiceTest
 
         static void Main()
         {
-            
-            IMicroHttpServer server = GetServer();
+            var server = GetServer();
 
             _serviceToRun = new TestService(LogWriter, server);
 
@@ -82,21 +81,8 @@ namespace JN.MicroHttpServer.WinServiceTest
         }
 
 
-        public static void StopAux(string serviceName)
-        {
-            ServiceController[] services = ServiceController.GetServices();
-            var controller = services.FirstOrDefault(x => x.ServiceName == serviceName);
 
-            if (controller == null)
-            {
-                return;
-            }
-
-            controller.Stop();
-            controller.WaitForStatus(ServiceControllerStatus.Stopped);
-        }
-
-        private static Result Shutdown(AccessDetails details, string content, NameValueCollection  queryString)
+        private static Result Shutdown(AccessDetails details, string content, NameValueCollection queryString)
         {
             if (details != null)
             {
@@ -111,13 +97,8 @@ namespace JN.MicroHttpServer.WinServiceTest
 
             LogWriter.LogMessage("Received request - Shutdown");
 
-            if (Environment.UserInteractive)
-                Environment.Exit(0);
-            else
-                StopAux(_serviceToRun.ServiceName);
-
-            //_serviceToRun.StopService();
-
+            _serviceToRun.StopService();
+            Environment.Exit(0);
 
             return new Result()
             {

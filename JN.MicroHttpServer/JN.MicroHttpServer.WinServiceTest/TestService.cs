@@ -48,8 +48,9 @@ namespace JN.MicroHttpServer.WinServiceTest
         protected override void OnStop()
         {
             _logger.LogMessage("Service is stopping. " + DateTime.Now);
+
             _httpServer.Stop();
-          
+
             _timer.Stop();
             _timer.Dispose();
         }

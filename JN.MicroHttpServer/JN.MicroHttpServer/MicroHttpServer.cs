@@ -30,7 +30,6 @@ namespace JN.MicroHttpServer
 
         public bool BasicAuthentication { get; set; }
 
-
         private void WriteErrorOutput(string text)
         {
             WriteOutputHandler?.Invoke(text);
@@ -69,7 +68,7 @@ namespace JN.MicroHttpServer
 
             IsRunning = false;
             _cts.Cancel();
-            _t?.Wait();
+            //_t?.Wait();
             
 
         }
@@ -119,11 +118,9 @@ namespace JN.MicroHttpServer
 
             while (!token.IsCancellationRequested)
             {
-                HttpListenerContext context;
-
                 try
                 {
-                    context = await listener.GetContextAsync().ConfigureAwait(false);
+                    var context = await listener.GetContextAsync().ConfigureAwait(false);
 
                     HandleRequest(context); // don't await
                 }
@@ -157,8 +154,8 @@ namespace JN.MicroHttpServer
             WriteOutput($"New {context.Request.HttpMethod} request for URL: {context.Request.Url.AbsoluteUri} | thread id: {Thread.CurrentThread.ManagedThreadId}");
 
 
-            string urlPath = context.Request.Url.GetLeftPart(UriPartial.Path);
-            string urlQuery = context.Request.Url.GetComponents(UriComponents.Query, UriFormat.UriEscaped);
+            var urlPath = context.Request.Url.GetLeftPart(UriPartial.Path);
+            var urlQuery = context.Request.Url.GetComponents(UriComponents.Query, UriFormat.UriEscaped);
 
             var queryString = HttpUtility.ParseQueryString(urlQuery);
 
@@ -170,17 +167,13 @@ namespace JN.MicroHttpServer
                 return;
             }
 
-            
-
             if (item == null)
             {
                 await ReturnError(context, "Not found", (int)HttpStatusCode.NotFound, HttpStatusCode.NotFound);
                 return;
             }
 
-
             var clientAcceptType = context.Request.AcceptTypes.GetAcceptedType();
-
 
             try
             {
