@@ -46,30 +46,29 @@ Example:
         private Result ProcessRequest(AccessDetails accessDetails, string content, NameValueCollection queryString)
         {
             //do stuff
-			
-			var resultProcessing = DoStuff();
+            var resultProcessing = DoStuff();
 			
             var result = new Result
-			{
-				Success = true
-			};
+            {
+                Success = true
+            };
 			
-			if(!resultProcessing)
-			{
-				result.ErrorDescription = "Error Description";
-				result.ErrorCode = -1;
-				result.Success = false;
-			}
+            if(!resultProcessing)
+            {
+                result.ErrorDescription = "Error Description";
+                result.ErrorCode = -1;
+                result.Success = false;
+            }
 			
             return result;
         }
 		
-		...
-		
-		var server = GetServer();
-		server.Start();
-		...
-		server.Stop();
+        ...
+        
+        var server = GetServer();
+        server.Start();
+        ...
+        server.Stop();
 ```
 
 
