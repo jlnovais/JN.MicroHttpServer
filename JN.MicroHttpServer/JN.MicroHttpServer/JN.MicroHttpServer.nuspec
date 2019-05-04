@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>JN.MicroHttpServer</id>
+    <version>1.0.0</version>
+    <title>JN.MicroHttpServer</title>
+    <authors>José Novais</authors>
+    <owners>José Novais</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <projectUrl>https://github.com/jlnovais/JN.MicroHttpServer</projectUrl>
+    <tags>http;micro;server;windowsservice;netstandard;service;winservice;csharp</tags>
+    <description>Micro Http Server - small http server to be used with other applications such as windows services. In this case, the package could be used do get the service status or send commands to the service.</description>
+    <summary>Micro Http Server - small http server to be used with other applications such as windows services.</summary>
+    <copyright>Copyright © Jose Novais, 2019</copyright>
+    <releaseNotes>First release.</releaseNotes>
+    <dependencies>
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+</package>

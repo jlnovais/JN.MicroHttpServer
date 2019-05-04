@@ -3,6 +3,21 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Copyright>José Novais, 2019</Copyright>
+    <PackageProjectUrl>https://github.com/jlnovais/JN.MicroHttpServer</PackageProjectUrl>
+    <Authors>José Novais</Authors>
+    <Company>José Novais</Company>
+    <Product>Micro Http Server - small http server to be used with other applications</Product>
+    <Description>Micro Http Server - small http server to be used with other applications such as windows services.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="LICENSE.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

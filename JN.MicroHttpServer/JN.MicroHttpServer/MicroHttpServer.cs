@@ -19,15 +19,12 @@ namespace JN.MicroHttpServer
         private CancellationTokenSource _cts;
         private Task _t;
         private string _lastError = "";
-
         private readonly IEnumerable<ConfigItem> _config;
 
 
         public Action<string> WriteOutputHandler { get; set; }
         public Action<string> WriteOutputErrorHandler { get; set; }
-
-        public bool IsRunning { get; private set; } = false;
-
+        public bool IsRunning { get; private set; }
         public bool BasicAuthentication { get; set; }
 
         private void WriteErrorOutput(string text)
@@ -69,8 +66,6 @@ namespace JN.MicroHttpServer
             IsRunning = false;
             _cts.Cancel();
             //_t?.Wait();
-            
-
         }
 
         public bool IsInitialized => _config != null && _config.Any();
@@ -173,8 +168,6 @@ namespace JN.MicroHttpServer
                 return;
             }
 
-            var clientAcceptType = context.Request.AcceptTypes.GetAcceptedType();
-
             try
             {
                 var contents = await GetRequestContentsAsync(context.Request);
@@ -192,7 +185,7 @@ namespace JN.MicroHttpServer
                 if (!string.IsNullOrWhiteSpace(result.Content))
                 {
                     byte[] data = Encoding.UTF8.GetBytes(result.Content);
-                    context.Response.ContentType = clientAcceptType; //"application/json";
+                    context.Response.ContentType = context.Request.AcceptTypes.GetAcceptedType(); //"application/json";
 
                     await context.Response.OutputStream.WriteAsync(data, 0, data.Length);
                 }
@@ -230,12 +223,12 @@ namespace JN.MicroHttpServer
 
 
 
-        private async Task<string> GetRequestContentsAsync(HttpListenerRequest Request)
+        private async Task<string> GetRequestContentsAsync(HttpListenerRequest request)
         {
             string documentContents;
-            using (Stream receiveStream = Request.InputStream)
+            using (var receiveStream = request.InputStream)
             {
-                using (StreamReader readStream = new StreamReader(receiveStream, Encoding.UTF8))
+                using (var readStream = new StreamReader(receiveStream, Encoding.UTF8))
                 {
                     documentContents = await readStream.ReadToEndAsync();
                 }
